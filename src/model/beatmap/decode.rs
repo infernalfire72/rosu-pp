@@ -131,17 +131,25 @@ impl BeatmapState {
         first: bool,
         offset: Pos,
     ) -> Result<(), ParseBeatmapError> {
-        fn read_point(value: &str, start_pos: Pos) -> Result<PathControlPoint, ParseBeatmapError> {
+        fn read_point(
+            value: &str,
+            start_pos: Pos,
+            version: i32,
+        ) -> Result<PathControlPoint, ParseBeatmapError> {
             let mut v = value
                 .split(':')
-                .map(|s| s.parse_with_limits(f64::from(MAX_COORDINATE_VALUE)));
+                .map(|s| s.parse_with_limits(MAX_COORDINATE_VALUE as f32));
 
             let (x, y) = v
                 .next()
                 .zip(v.next())
                 .ok_or(ParseBeatmapError::InvalidHitObjectLine)?;
 
-            let pos = Pos::new(x? as i32 as f32, y? as i32 as f32);
+            let pos = if version >= 128 {
+                Pos::new(x?, y?)
+            } else {
+                Pos::new(x? as i32 as f32, y? as i32 as f32)
+            };
 
             Ok(PathControlPoint::new(pos - start_pos))
         }
@@ -169,11 +177,12 @@ impl BeatmapState {
         }
 
         for &point in points.iter().skip(1) {
-            self.vertices.push(read_point(point, offset)?);
+            self.vertices.push(read_point(point, offset, self.version)?);
         }
 
         if let Some(end_point) = end_point {
-            self.vertices.push(read_point(end_point, offset)?);
+            self.vertices
+                .push(read_point(end_point, offset, self.version)?);
         }
 
         if path_type == PathType::PERFECT_CURVE {
@@ -606,17 +615,20 @@ impl DecodeBeatmap for Beatmap {
             return Err(ParseBeatmapError::InvalidHitObjectLine);
         };
 
-        let pos = Pos {
-            x: f32::clamp(
-                x.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
-                0.0,
-                512.0,
-            ) as i32 as f32,
-            y: f32::clamp(
-                y.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
-                0.0,
-                512.0,
-            ) as i32 as f32,
+        let x = f32::clamp(
+            x.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
+            0.0,
+            512.0,
+        );
+        let y = f32::clamp(
+            y.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
+            0.0,
+            512.0,
+        );
+        let pos = if state.version >= 128 {
+            Pos::new(x, y)
+        } else {
+            Pos::new(x as i32 as f32, y as i32 as f32)
         };
 
         let start_time = f64::parse(start_time)?;
