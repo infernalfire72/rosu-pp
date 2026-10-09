@@ -13,6 +13,7 @@ use self::common::*;
 mod common;
 
 include!("data/ext_refs.rs");
+include!("data/ext_edge_refs.rs");
 include!("data/ext_refs_mania.rs");
 include!("data/ext_refs_catch.rs");
 
@@ -472,7 +473,7 @@ impl AssertEq for ManiaDifficultyAttributes {
 
 /// Bit-exact difficulty-attribute parity across 18 diverse osu!standard maps
 /// (low OD<5, rate-change, spinner-heavy) x 7 mod combos, against C# refs.
-/// Regenerate refs: `python scripts/gen_ext_refs.py scripts/manifest.txt tests/data/ext_refs.rs`.
+/// Regenerate refs: `python scripts/gen_ext_refs.py osu scripts/manifest.txt tests/data/ext_refs.rs`.
 #[test]
 fn ext_osu() {
     for ext in EXT_REFS {
@@ -490,6 +491,29 @@ fn ext_osu() {
                 "{}/{}: rs={rv} cs={fstr}",
                 ext.path,
                 fname
+            );
+        }
+    }
+}
+
+#[test]
+fn ext_edge_osu() {
+    for ext in EXT_EDGE_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let attrs = Difficulty::new()
+            .mods(ext.mods)
+            .lazer(false)
+            .calculate_for_mode::<Osu>(&map)
+            .unwrap();
+
+        for &(name, value) in ext.difficulty {
+            let actual = attr_val(&attrs, name);
+            let expected: f64 = value.parse().unwrap();
+            assert_eq!(
+                actual.to_bits(),
+                expected.to_bits(),
+                "{}/{name}: rs={actual} cs={expected}",
+                ext.name,
             );
         }
     }

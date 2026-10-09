@@ -14,6 +14,7 @@ mod common;
 
 include!("data/ext_refs.rs");
 include!("data/ext_acc_refs.rs");
+include!("data/ext_edge_refs.rs");
 include!("data/ext_refs_mania.rs");
 include!("data/ext_refs_catch.rs");
 
@@ -239,7 +240,7 @@ impl AssertEq for ManiaPerformanceAttributes {
 
 /// Bit-exact performance-attribute parity across 18 diverse osu!standard maps
 /// (lazer, full-combo SS, 0 misses, 100% acc) x 7 mod combos, against C# refs.
-/// Regenerate refs: `python scripts/gen_ext_refs.py scripts/manifest.txt tests/data/ext_refs.rs`.
+/// Regenerate refs: `python scripts/gen_ext_refs.py osu scripts/manifest.txt tests/data/ext_refs.rs`.
 #[test]
 fn ext_osu() {
     for ext in EXT_REFS {
@@ -305,6 +306,44 @@ fn ext_acc_osu() {
                 ),
                 _ => panic!("{}/{}: rs={rv:?} cs={cv:?}", ext.path, fname),
             }
+        }
+    }
+}
+
+#[test]
+fn ext_edge_osu() {
+    for ext in EXT_EDGE_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let mut calculator = OsuPerformance::from(&map)
+            .lazer(false)
+            .mods(ext.mods)
+            .n300(ext.n300)
+            .n100(ext.n100)
+            .n50(ext.n50)
+            .misses(ext.misses)
+            .combo(ext.combo);
+
+        if let Some(score) = ext.legacy_total_score {
+            calculator = calculator.legacy_total_score(score);
+        }
+
+        let attrs = calculator.calculate().unwrap();
+        if ext.n300 + ext.n100 + ext.n50 + ext.misses == 0 {
+            // Keep the existing zero-judgment result; C# returns NaN pp here.
+            assert_eq!(attrs.pp.to_bits(), 0.0_f64.to_bits());
+
+            continue;
+        }
+
+        for &(name, value) in ext.performance {
+            let actual = perf_opt_val(&attrs, name);
+            let expected: Option<f64> = value.map(|s| s.parse().unwrap());
+            assert_eq!(
+                actual.map(f64::to_bits),
+                expected.map(f64::to_bits),
+                "{}/{name}: rs={actual:?} cs={expected:?}",
+                ext.name,
+            );
         }
     }
 }
