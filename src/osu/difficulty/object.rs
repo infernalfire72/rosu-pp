@@ -120,6 +120,13 @@ impl<'a> OsuDifficultyObject<'a> {
         let fade_in_duration = 400.0 * f64::min(1.0, time_preempt / OsuObject::PREEMPT_MIN);
 
         if hidden {
+            // * Sliders retain their default TimeFadeIn to match Stable
+            let time_fade_in = if self.base.is_slider() {
+                fade_in_duration
+            } else {
+                time_fade_in
+            };
+
             // * Taken from OsuModHidden.
             let fade_out_start_time = self.base.start_time - time_preempt + time_fade_in;
             let fade_out_duration = time_preempt * HD_FADE_OUT_DURATION_MULTIPLIER;

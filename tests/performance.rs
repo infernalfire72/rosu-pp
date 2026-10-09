@@ -4,18 +4,65 @@ use rosu_pp::{
     Beatmap,
     catch::{CatchPerformance, CatchPerformanceAttributes},
     mania::{ManiaPerformance, ManiaPerformanceAttributes},
-    osu::{OsuPerformance, OsuPerformanceAttributes},
     taiko::{TaikoPerformance, TaikoPerformanceAttributes},
 };
+
+#[reference_tests::requires(has_ext_osu_refs, has_ext_acc_osu_refs, has_ext_edge_osu_refs)]
+use rosu_pp::osu::OsuPerformance;
+#[reference_tests::requires(
+    has_ext_osu_refs,
+    has_ext_acc_osu_refs,
+    has_ext_edge_osu_refs,
+    has_mass_osu_refs
+)]
+use rosu_pp::osu::OsuPerformanceAttributes;
 
 use self::common::*;
 
 mod common;
 
+#[reference_tests::requires(has_ext_osu_refs)]
 include!("data/ext_refs.rs");
+missing_reference_test!(
+    has_ext_osu_refs,
+    ext_osu,
+    "Generate tests/data/ext_refs.rs with scripts/gen_ext_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_acc_osu_refs)]
 include!("data/ext_acc_refs.rs");
+missing_reference_test!(
+    has_ext_acc_osu_refs,
+    ext_acc_osu,
+    "Generate tests/data/ext_acc_refs.rs with scripts/gen_ext_acc_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_edge_osu_refs)]
+include!("data/ext_edge_refs.rs");
+missing_reference_test!(
+    has_ext_edge_osu_refs,
+    ext_edge_osu,
+    "Generate tests/data/ext_edge_refs.rs with scripts/gen_ext_edge_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_mass_osu_refs)]
+include!("data/mass_osu_refs.rs");
+missing_reference_test!(
+    has_mass_osu_refs,
+    mass_osu_regressions,
+    "Generate tests/data/mass_osu_refs.rs with scripts/gen_mass_osu_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_mania_refs)]
 include!("data/ext_refs_mania.rs");
+missing_reference_test!(
+    has_ext_mania_refs,
+    ext_mania,
+    "Generate tests/data/ext_refs_mania.rs with scripts/gen_ext_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_catch_refs)]
 include!("data/ext_refs_catch.rs");
+missing_reference_test!(
+    has_ext_catch_refs,
+    ext_catch,
+    "Generate tests/data/ext_refs_catch.rs with scripts/gen_ext_refs.py; see docs/standard-parity.md"
+);
 
 macro_rules! test_cases {
     ( $mode:ident: $path:ident {
@@ -239,7 +286,8 @@ impl AssertEq for ManiaPerformanceAttributes {
 
 /// Bit-exact performance-attribute parity across 18 diverse osu!standard maps
 /// (lazer, full-combo SS, 0 misses, 100% acc) x 7 mod combos, against C# refs.
-/// Regenerate refs: `python scripts/gen_ext_refs.py scripts/manifest.txt tests/data/ext_refs.rs`.
+/// Regenerate refs: `python scripts/gen_ext_refs.py osu scripts/manifest.txt tests/data/ext_refs.rs`.
+#[reference_tests::requires(has_ext_osu_refs)]
 #[test]
 fn ext_osu() {
     for ext in EXT_REFS {
@@ -275,6 +323,7 @@ fn ext_osu() {
 /// miss penalties, `speed_deviation`, the accuracy pp-component and the
 /// flashlight combo scaling) all run and are compared bit-exactly.
 /// Regenerate refs: `python scripts/gen_ext_acc_refs.py scripts/manifest.txt tests/data/ext_acc_refs.rs`.
+#[reference_tests::requires(has_ext_acc_osu_refs)]
 #[test]
 fn ext_acc_osu() {
     for ext in EXT_ACC_REFS {
@@ -309,9 +358,49 @@ fn ext_acc_osu() {
     }
 }
 
+#[reference_tests::requires(has_ext_edge_osu_refs)]
+#[test]
+fn ext_edge_osu() {
+    for ext in EXT_EDGE_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let mut calculator = OsuPerformance::from(&map)
+            .lazer(false)
+            .mods(ext.mods)
+            .n300(ext.n300)
+            .n100(ext.n100)
+            .n50(ext.n50)
+            .misses(ext.misses)
+            .combo(ext.combo);
+
+        if let Some(score) = ext.legacy_total_score {
+            calculator = calculator.legacy_total_score(score);
+        }
+
+        let attrs = calculator.calculate().unwrap();
+        if ext.n300 + ext.n100 + ext.n50 + ext.misses == 0 {
+            // Keep the existing zero-judgment result; C# returns NaN pp here.
+            assert_eq!(attrs.pp.to_bits(), 0.0_f64.to_bits());
+
+            continue;
+        }
+
+        for &(name, value) in ext.performance {
+            let actual = perf_opt_val(&attrs, name);
+            let expected: Option<f64> = value.map(|s| s.parse().unwrap());
+            assert_eq!(
+                actual.map(f64::to_bits),
+                expected.map(f64::to_bits),
+                "{}/{name}: rs={actual:?} cs={expected:?}",
+                ext.name,
+            );
+        }
+    }
+}
+
 /// Bit-exact performance-attribute parity for mania (lazer, full-combo SS, 0
 /// misses, 100% acc) across 14 diverse mania maps x 7 mod combos, against C# refs.
 /// Regenerate refs: `python scripts/gen_ext_refs.py mania scripts/manifest_mania.txt tests/data/ext_refs_mania.rs`.
+#[reference_tests::requires(has_ext_mania_refs)]
 #[test]
 fn ext_mania() {
     for ext in MANIA_EXT_REFS {
@@ -346,6 +435,7 @@ fn ext_mania() {
 /// Bit-exact performance-attribute parity (full-combo SS, 0 misses, 100% acc)
 /// across 13 diverse catch maps x 7 mod combos, against C# refs.
 /// Regenerate refs: `python scripts/gen_ext_refs.py catch scripts/manifest_catch.txt tests/data/ext_refs_catch.rs`.
+#[reference_tests::requires(has_ext_catch_refs)]
 #[test]
 fn ext_catch() {
     for ext in CATCH_EXT_REFS {
@@ -375,9 +465,57 @@ fn ext_catch() {
     }
 }
 
+#[reference_tests::requires(has_mass_osu_refs)]
+#[test]
+fn mass_osu_regressions() {
+    for ext in MASS_OSU_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let difficulty = rosu_pp::Difficulty::new()
+            .mods(ext.mods)
+            .lazer(ext.lazer)
+            .calculate_for_mode::<rosu_pp::osu::Osu>(&map)
+            .unwrap();
+
+        for (index, score) in ext.scores.iter().enumerate() {
+            let s = score.state;
+            let attrs = difficulty
+                .clone()
+                .performance()
+                .mods(ext.mods)
+                .lazer(ext.lazer)
+                .n300(s[0])
+                .n100(s[1])
+                .n50(s[2])
+                .misses(s[3])
+                .combo(s[4])
+                .slider_end_hits(s[5])
+                .large_tick_hits(s[6])
+                .calculate()
+                .unwrap();
+
+            for &(name, expected) in score.performance {
+                assert_eq!(
+                    perf_opt_val(&attrs, name).map(f64::to_bits),
+                    expected,
+                    "{}/{name}, mods={}, lazer={}, score={index}",
+                    ext.path,
+                    ext.mods,
+                    ext.lazer
+                );
+            }
+        }
+    }
+}
+
 /// Map a C# JSON performance key to the Rust `OsuPerformanceAttributes` value,
 /// wrapped in `Option` so `None` refs (e.g. `score_based_estimated_miss_count`)
 /// can be compared uniformly.
+#[reference_tests::requires(
+    has_ext_osu_refs,
+    has_ext_acc_osu_refs,
+    has_ext_edge_osu_refs,
+    has_mass_osu_refs
+)]
 fn perf_opt_val(attrs: &OsuPerformanceAttributes, fname: &str) -> Option<f64> {
     match fname {
         "pp" => Some(attrs.pp),

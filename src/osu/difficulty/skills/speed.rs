@@ -5,7 +5,7 @@ use crate::{
         evaluators::{RhythmEvaluator, SpeedEvaluator},
         object::OsuDifficultyObject,
     },
-    util::float_ext::FloatExt,
+    util::{difficulty as diff_utils, float_ext::FloatExt},
 };
 
 define_skill! {
@@ -84,7 +84,7 @@ impl Speed {
 
         self.skill_object_difficulties
             .iter()
-            .map(|strain| 1.0 / (1.0 + f64::exp(-((strain / max_strain) * 12.0 - 6.0))))
+            .map(|strain| diff_utils::logistic(strain / max_strain, 0.5, 12.0, None))
             .sum()
     }
 

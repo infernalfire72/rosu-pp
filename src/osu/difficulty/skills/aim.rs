@@ -182,7 +182,7 @@ impl Aim {
         self.slider_strains
             .iter()
             .copied()
-            .map(|strain| 1.0 / (1.0 + f64::exp(-((strain / max_slider_strain) * 12.0 - 6.0))))
+            .map(|strain| diff_utils::logistic(strain / max_slider_strain, 0.5, 12.0, None))
             .sum()
     }
 
@@ -200,7 +200,6 @@ impl Aim {
     pub fn cloned_difficulty_value(&self) -> f64 {
         let peaks = Self::get_current_strain_peaks(
             self.skill_strain_peaks.clone(),
-            self.skill_total_length,
             self.skill_current_section_peak,
             self.skill_current_section_begin,
             self.skill_current_section_end,

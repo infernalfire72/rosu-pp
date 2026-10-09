@@ -51,7 +51,11 @@ impl OsuObject {
         };
 
         Self {
-            pos: h.pos,
+            pos: if matches!(kind, OsuObjectKind::Spinner(_)) {
+                PLAYFIELD_BASE_SIZE / 2.0
+            } else {
+                h.pos
+            },
             start_time: h.start_time,
             stack_height: 0,
             stack_offset: Pos::default(),

@@ -36,7 +36,24 @@ impl<T> IEnumerable<T> for Vec<T> {
     where
         T: Ord,
     {
-        let index = self.binary_search(&item).unwrap_or_else(|i| i);
+        // List<T>.BinarySearch returns the first equal midpoint it visits.
+        // Rust's binary_search chooses a different position among equal values,
+        // which changes the ordering of equal strain peaks with different lengths.
+        let mut low = 0;
+        let mut high = self.len();
+        let index = loop {
+            if low == high {
+                break low;
+            }
+
+            let mid = low + (high - low - 1) / 2;
+
+            match self[mid].cmp(&item) {
+                std::cmp::Ordering::Less => low = mid + 1,
+                std::cmp::Ordering::Equal => break mid,
+                std::cmp::Ordering::Greater => high = mid,
+            }
+        };
         self.insert(index, item);
         index
     }

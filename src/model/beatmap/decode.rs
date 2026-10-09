@@ -7,7 +7,8 @@ use rosu_map::{
         events::{BreakPeriod, EventType, ParseEventTypeError},
         general::{GameMode, GeneralKey, ParseGameModeError},
         hit_objects::{
-            HitObjectType, ParseHitObjectTypeError, PathControlPoint, PathType,
+            BorrowedCurve, CurveBuffers, HitObjectType, ParseHitObjectTypeError, PathControlPoint,
+            PathType,
             hit_samples::{HitSoundType, ParseHitSoundTypeError},
         },
         timing_points::{ControlPoint, EffectFlags, ParseEffectFlagsError},
@@ -131,17 +132,25 @@ impl BeatmapState {
         first: bool,
         offset: Pos,
     ) -> Result<(), ParseBeatmapError> {
-        fn read_point(value: &str, start_pos: Pos) -> Result<PathControlPoint, ParseBeatmapError> {
+        fn read_point(
+            value: &str,
+            start_pos: Pos,
+            version: i32,
+        ) -> Result<PathControlPoint, ParseBeatmapError> {
             let mut v = value
                 .split(':')
-                .map(|s| s.parse_with_limits(f64::from(MAX_COORDINATE_VALUE)));
+                .map(|s| s.parse_with_limits(MAX_COORDINATE_VALUE as f32));
 
             let (x, y) = v
                 .next()
                 .zip(v.next())
                 .ok_or(ParseBeatmapError::InvalidHitObjectLine)?;
 
-            let pos = Pos::new(x? as i32 as f32, y? as i32 as f32);
+            let pos = if version >= 128 {
+                Pos::new(x?, y?)
+            } else {
+                Pos::new(x? as i32 as f32, y? as i32 as f32)
+            };
 
             Ok(PathControlPoint::new(pos - start_pos))
         }
@@ -169,11 +178,12 @@ impl BeatmapState {
         }
 
         for &point in points.iter().skip(1) {
-            self.vertices.push(read_point(point, offset)?);
+            self.vertices.push(read_point(point, offset, self.version)?);
         }
 
         if let Some(end_point) = end_point {
-            self.vertices.push(read_point(end_point, offset)?);
+            self.vertices
+                .push(read_point(end_point, offset, self.version)?);
         }
 
         if path_type == PathType::PERFECT_CURVE {
@@ -606,9 +616,20 @@ impl DecodeBeatmap for Beatmap {
             return Err(ParseBeatmapError::InvalidHitObjectLine);
         };
 
-        let pos = Pos {
-            x: x.parse_with_limits(MAX_COORDINATE_VALUE as f32)? as i32 as f32,
-            y: y.parse_with_limits(MAX_COORDINATE_VALUE as f32)? as i32 as f32,
+        let x = f32::clamp(
+            x.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
+            0.0,
+            512.0,
+        );
+        let y = f32::clamp(
+            y.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
+            0.0,
+            512.0,
+        );
+        let pos = if state.version >= 128 {
+            Pos::new(x, y)
+        } else {
+            Pos::new(x as i32 as f32, y as i32 as f32)
         };
 
         let start_time = f64::parse(start_time)?;
@@ -687,12 +708,32 @@ impl DecodeBeatmap for Beatmap {
             let mut control_points = Vec::with_capacity(state.curve_points.len());
             control_points.append(&mut state.curve_points);
 
-            let slider = Slider {
+            let mut slider = Slider {
                 expected_dist: len,
                 repeats,
                 control_points: control_points.into_boxed_slice(),
                 node_sounds,
             };
+
+            // The C# decoder resets repeats on zero-length paths before ruleset conversion.
+            // Its path has Catmull optimisation disabled, as in the non-osu! curve builder.
+            if slider.repeats > 0
+                && BorrowedCurve::new(
+                    GameMode::Catch,
+                    &slider.control_points,
+                    slider.expected_dist,
+                    &mut CurveBuffers::default(),
+                )
+                .dist()
+                    <= 1e-7
+            {
+                slider.repeats = 0;
+                slider.node_sounds = [
+                    slider.node_sounds[0],
+                    slider.node_sounds[slider.node_sounds.len() - 1],
+                ]
+                .into();
+            }
 
             HitObjectKind::Slider(slider)
         } else if hit_object_type.has_flag(HitObjectType::SPINNER) {

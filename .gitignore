@@ -6,4 +6,11 @@ output*
 expanded.rs
 .sem/
 sem_diff*
+__pycache__/
 .pi/
+
+/tests/data/*
+!/tests/data/ext_acc_refs.rs
+!/tests/data/ext_refs.rs
+!/tests/data/ext_refs_catch.rs
+!/tests/data/ext_refs_mania.rs

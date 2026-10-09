@@ -29,9 +29,24 @@ macro_rules! impl_float_ext {
                 Self::abs(self - other) >= Self::EPS
             }
 
-            // <https://github.com/dotnet/runtime/blob/1d1bf92fcf43aa6981804dc53c5174445069c9e4/src/libraries/System.Private.CoreLib/src/System/Double.cs#L841>
+            // .NET 10 Double.Lerp uses MultiplyAddEstimate for the first product and sum.
             fn lerp(value1: Self, value2: Self, amount: Self) -> Self {
-                (value1 * (1.0 - amount)) + (value2 * amount)
+                #[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
+                let fused = std::is_x86_feature_detected!("fma");
+                #[cfg(target_arch = "aarch64")]
+                let fused = true;
+                #[cfg(not(any(
+                    target_arch = "x86",
+                    target_arch = "x86_64",
+                    target_arch = "aarch64"
+                )))]
+                let fused = false;
+
+                if fused {
+                    Self::mul_add(value1, 1.0 - amount, value2 * amount)
+                } else {
+                    value1 * (1.0 - amount) + value2 * amount
+                }
             }
         }
     };

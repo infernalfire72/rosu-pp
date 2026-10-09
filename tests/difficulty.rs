@@ -4,17 +4,52 @@ use rosu_pp::{
     Beatmap, Difficulty,
     catch::{Catch, CatchDifficultyAttributes},
     mania::{Mania, ManiaDifficultyAttributes},
-    osu::{Osu, OsuDifficultyAttributes},
+    osu::Osu,
     taiko::{Taiko, TaikoDifficultyAttributes},
 };
+
+#[reference_tests::requires(has_ext_osu_refs, has_ext_edge_osu_refs, has_mass_osu_refs)]
+use rosu_pp::osu::OsuDifficultyAttributes;
 
 use self::common::*;
 
 mod common;
 
+#[reference_tests::requires(has_ext_osu_refs)]
 include!("data/ext_refs.rs");
+missing_reference_test!(
+    has_ext_osu_refs,
+    ext_osu,
+    "Generate tests/data/ext_refs.rs with scripts/gen_ext_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_edge_osu_refs)]
+include!("data/ext_edge_refs.rs");
+missing_reference_test!(
+    has_ext_edge_osu_refs,
+    ext_edge_osu,
+    "Generate tests/data/ext_edge_refs.rs with scripts/gen_ext_edge_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_mass_osu_refs)]
+include!("data/mass_osu_refs.rs");
+missing_reference_test!(
+    has_mass_osu_refs,
+    mass_osu_regressions,
+    "Generate tests/data/mass_osu_refs.rs with scripts/gen_mass_osu_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_mania_refs)]
 include!("data/ext_refs_mania.rs");
+missing_reference_test!(
+    has_ext_mania_refs,
+    ext_mania,
+    "Generate tests/data/ext_refs_mania.rs with scripts/gen_ext_refs.py; see docs/standard-parity.md"
+);
+#[reference_tests::requires(has_ext_catch_refs)]
 include!("data/ext_refs_catch.rs");
+missing_reference_test!(
+    has_ext_catch_refs,
+    ext_catch,
+    "Generate tests/data/ext_refs_catch.rs with scripts/gen_ext_refs.py; see docs/standard-parity.md"
+);
 
 macro_rules! test_cases {
     ( $mode:ident: $path:ident {
@@ -472,7 +507,8 @@ impl AssertEq for ManiaDifficultyAttributes {
 
 /// Bit-exact difficulty-attribute parity across 18 diverse osu!standard maps
 /// (low OD<5, rate-change, spinner-heavy) x 7 mod combos, against C# refs.
-/// Regenerate refs: `python scripts/gen_ext_refs.py scripts/manifest.txt tests/data/ext_refs.rs`.
+/// Regenerate refs: `python scripts/gen_ext_refs.py osu scripts/manifest.txt tests/data/ext_refs.rs`.
+#[reference_tests::requires(has_ext_osu_refs)]
 #[test]
 fn ext_osu() {
     for ext in EXT_REFS {
@@ -495,10 +531,35 @@ fn ext_osu() {
     }
 }
 
+#[reference_tests::requires(has_ext_edge_osu_refs)]
+#[test]
+fn ext_edge_osu() {
+    for ext in EXT_EDGE_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let attrs = Difficulty::new()
+            .mods(ext.mods)
+            .lazer(false)
+            .calculate_for_mode::<Osu>(&map)
+            .unwrap();
+
+        for &(name, value) in ext.difficulty {
+            let actual = attr_val(&attrs, name);
+            let expected: f64 = value.parse().unwrap();
+            assert_eq!(
+                actual.to_bits(),
+                expected.to_bits(),
+                "{}/{name}: rs={actual} cs={expected}",
+                ext.name,
+            );
+        }
+    }
+}
+
 /// Bit-exact difficulty-attribute parity (star rating + max combo) across 14
 /// diverse mania maps (2K-18K columns, hold-heavy, rate-change) x 7 mod combos,
 /// against C# refs.
 /// Regenerate refs: `python scripts/gen_ext_refs.py mania scripts/manifest_mania.txt tests/data/ext_refs_mania.rs`.
+#[reference_tests::requires(has_ext_mania_refs)]
 #[test]
 fn ext_mania() {
     for ext in MANIA_EXT_REFS {
@@ -528,6 +589,7 @@ fn ext_mania() {
 /// Bit-exact difficulty-attribute parity (star rating + max combo) across 13
 /// diverse catch maps (CS 2.0-9.9, rate-change) x 7 mod combos, against C# refs.
 /// Regenerate refs: `python scripts/gen_ext_refs.py catch scripts/manifest_catch.txt tests/data/ext_refs_catch.rs`.
+#[reference_tests::requires(has_ext_catch_refs)]
 #[test]
 fn ext_catch() {
     for ext in CATCH_EXT_REFS {
@@ -554,10 +616,39 @@ fn ext_catch() {
     }
 }
 
+#[reference_tests::requires(has_mass_osu_refs)]
+#[test]
+fn mass_osu_regressions() {
+    for ext in MASS_OSU_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let attrs = Difficulty::new()
+            .mods(ext.mods)
+            .lazer(ext.lazer)
+            .calculate_for_mode::<Osu>(&map)
+            .unwrap();
+
+        for &(name, expected) in ext.difficulty {
+            assert_eq!(
+                attr_val(&attrs, name).to_bits(),
+                expected,
+                "{}/{name}, mods={}, lazer={}",
+                ext.path,
+                ext.mods,
+                ext.lazer
+            );
+        }
+    }
+}
+
+#[reference_tests::requires(has_ext_osu_refs, has_ext_edge_osu_refs, has_mass_osu_refs)]
 fn attr_val(attrs: &OsuDifficultyAttributes, fname: &str) -> f64 {
     match fname {
         "star_rating" => attrs.stars,
         "max_combo" => attrs.max_combo as f64,
+        "HitCircleCount" => f64::from(attrs.n_circles),
+        "SliderCount" => f64::from(attrs.n_sliders),
+        "SpinnerCount" => f64::from(attrs.n_spinners),
+        "n_large_ticks" => f64::from(attrs.n_large_ticks),
         "aim_difficulty" => attrs.aim,
         "aim_difficult_slider_count" => attrs.aim_difficult_slider_count,
         "speed_difficulty" => attrs.speed,

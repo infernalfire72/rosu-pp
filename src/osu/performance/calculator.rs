@@ -64,16 +64,17 @@ impl OsuPerformanceCalculator<'_> {
         let combo_based_estimated_miss_count = self.calculate_combo_based_estimated_miss_count();
         let mut score_based_estimated_miss_count = None;
 
-        let mut effective_miss_count =
-            if using_classic_slider_acc && !self.mods.sv2() && state.legacy_total_score.is_some() {
-                let legacy_score_miss_calc =
-                    OsuLegacyScoreMissCalculator::new(state, acc, mods, attrs);
+        let mut effective_miss_count = if using_classic_slider_acc
+            && !self.mods.sv2()
+            && state.legacy_total_score.is_some_and(|score| score > 0)
+        {
+            let legacy_score_miss_calc = OsuLegacyScoreMissCalculator::new(state, acc, mods, attrs);
 
-                *score_based_estimated_miss_count.insert(legacy_score_miss_calc.calculate())
-            } else {
-                // * Use combo-based miss count if this isn't a legacy score
-                combo_based_estimated_miss_count
-            };
+            *score_based_estimated_miss_count.insert(legacy_score_miss_calc.calculate())
+        } else {
+            // * Use combo-based miss count if this isn't a legacy score
+            combo_based_estimated_miss_count
+        };
 
         effective_miss_count = effective_miss_count.max(f64::from(state.hitresults.misses));
         effective_miss_count = effective_miss_count.min(f64::from(state.hitresults.total_hits()));
@@ -117,7 +118,7 @@ impl OsuPerformanceCalculator<'_> {
                     f64::max(0.0, 1.0 - diff_utils::pow(od / 13.33, 5)),
                 )
             } else {
-                (1.0, 1.0)
+                (0.75, 1.0)
             };
 
             // * As we're adding Oks and Mehs to an approximated number of combo breaks the result can be
@@ -139,7 +140,8 @@ impl OsuPerformanceCalculator<'_> {
         );
         let acc_value = self.compute_accuracy_value();
 
-        let reading_value = self.compute_reading_value(effective_miss_count);
+        let reading_value =
+            self.compute_reading_value(effective_miss_count + aim_estimated_slider_breaks);
         let flashlight_value = self.compute_flashlight_value(effective_miss_count);
         let cognition_value = sum_cognition_difficulty(reading_value, flashlight_value);
 
@@ -301,7 +303,7 @@ impl OsuPerformanceCalculator<'_> {
         // * of the calculation we focus on hitting the timing hit window.
         let mut amount_hit_objects_with_acc = self.attrs.n_circles;
 
-        if !self.using_classic_slider_acc {
+        if !self.using_classic_slider_acc || self.mods.sv2() {
             amount_hit_objects_with_acc += self.attrs.n_sliders;
         }
 
@@ -641,7 +643,7 @@ impl OsuPerformanceCalculator<'_> {
     // * so we use the amount of relatively difficult sections to adjust miss penalty
     // * to make it more punishing on maps with lower amount of hard sections.
     fn calculate_miss_penalty(miss_count: f64, diff_strain_count: f64) -> f64 {
-        0.93 / (miss_count / (4.0 * diff_strain_count.max(1.0).ln()) + 1.0)
+        0.93 / (miss_count / (4.0 * f64::ln(f64::max(1.0, diff_strain_count))) + 1.0)
     }
 
     fn get_combo_scaling_factor(&self) -> f64 {

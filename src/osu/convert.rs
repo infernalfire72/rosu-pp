@@ -69,7 +69,8 @@ pub fn convert_objects(
             .for_each(OsuObject::reflect_both_axes),
     }
 
-    let stack_threshold = time_preempt * f64::from(map.stack_leniency);
+    // C# multiplies the integral preempt and stack leniency as floats for stable compatibility.
+    let stack_threshold = f64::from(time_preempt as i32 as f32 * map.stack_leniency);
 
     if map.version >= 6 {
         stacking(&mut osu_objects, stack_threshold);
@@ -78,7 +79,9 @@ pub fn convert_objects(
     }
 
     for h in osu_objects.iter_mut() {
-        h.stack_offset = scaling_factor.stack_offset(h.stack_height);
+        if !h.is_spinner() {
+            h.stack_offset = scaling_factor.stack_offset(h.stack_height);
+        }
     }
 
     osu_objects
@@ -125,7 +128,11 @@ fn stacking(hit_objects: &mut [OsuObject], stack_threshold: f64) {
                     continue;
                 }
 
-                if hit_objects[obj_i_idx].start_time - hit_objects[n].end_time() > stack_threshold {
+                // * truncation to integer is required to match stable
+                if f64::from(hit_objects[obj_i_idx].start_time as i32)
+                    - f64::from(hit_objects[n].end_time() as i32)
+                    > stack_threshold
+                {
                     break; // * We are no longer within stacking range of the previous object.
                 }
 

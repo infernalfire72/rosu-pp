@@ -156,7 +156,7 @@ impl SnapAimEvaluator {
                     (osu_last_2_obj.base.stacked_pos() - osu_last_obj.base.stacked_pos()).length();
 
                 if dist < 1.0 {
-                    wide_angle_bonus *= 1.0 - 0.55 * (1.0 - f64::from(dist));
+                    wide_angle_bonus *= 1.0 - 0.55 * f64::from(1.0 - dist);
                 }
             }
 

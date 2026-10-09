@@ -35,7 +35,7 @@ impl<'a> OsuLegacyScoreMissCalculator<'a> {
             return 0.0;
         }
 
-        let Some(legacy_total_score) = state.legacy_total_score else {
+        let Some(legacy_total_score) = state.legacy_total_score.filter(|&score| score > 0) else {
             return 0.0;
         };
 
