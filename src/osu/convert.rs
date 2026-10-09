@@ -79,7 +79,9 @@ pub fn convert_objects(
     }
 
     for h in osu_objects.iter_mut() {
-        h.stack_offset = scaling_factor.stack_offset(h.stack_height);
+        if !h.is_spinner() {
+            h.stack_offset = scaling_factor.stack_offset(h.stack_height);
+        }
     }
 
     osu_objects
