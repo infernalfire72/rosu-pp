@@ -7,7 +7,8 @@ use rosu_map::{
         events::{BreakPeriod, EventType, ParseEventTypeError},
         general::{GameMode, GeneralKey, ParseGameModeError},
         hit_objects::{
-            HitObjectType, ParseHitObjectTypeError, PathControlPoint, PathType,
+            BorrowedCurve, CurveBuffers, HitObjectType, ParseHitObjectTypeError, PathControlPoint,
+            PathType,
             hit_samples::{HitSoundType, ParseHitSoundTypeError},
         },
         timing_points::{ControlPoint, EffectFlags, ParseEffectFlagsError},
@@ -707,12 +708,32 @@ impl DecodeBeatmap for Beatmap {
             let mut control_points = Vec::with_capacity(state.curve_points.len());
             control_points.append(&mut state.curve_points);
 
-            let slider = Slider {
+            let mut slider = Slider {
                 expected_dist: len,
                 repeats,
                 control_points: control_points.into_boxed_slice(),
                 node_sounds,
             };
+
+            // The C# decoder resets repeats on zero-length paths before ruleset conversion.
+            // Its path has Catmull optimisation disabled, as in the non-osu! curve builder.
+            if slider.repeats > 0
+                && BorrowedCurve::new(
+                    GameMode::Catch,
+                    &slider.control_points,
+                    slider.expected_dist,
+                    &mut CurveBuffers::default(),
+                )
+                .dist()
+                    <= 1e-7
+            {
+                slider.repeats = 0;
+                slider.node_sounds = [
+                    slider.node_sounds[0],
+                    slider.node_sounds[slider.node_sounds.len() - 1],
+                ]
+                .into();
+            }
 
             HitObjectKind::Slider(slider)
         } else if hit_object_type.has_flag(HitObjectType::SPINNER) {
