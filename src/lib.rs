@@ -4,7 +4,13 @@
 //! with emphasis on a precise translation to Rust for the most [accurate results](#accuracy)
 //! while also providing a significant [boost in performance](#speed).
 //!
-//! Last commits of the ported code:
+//! osu!standard difficulty and performance are verified against:
+//!   - [osu!lazer] : `adfbb1ca25f7836f0f3577faac334469e6e9e8ae` (2026-10-09)
+//!   - [osu!tools] : `8ce45b33c61e977b577fa1579c169371ed7b6c76` (2026-09-12), built against that osu! source
+//!
+//! See `docs/standard-parity.md` for reference generation and coverage.
+//!
+//! Original port baseline for the other gamemodes:
 //!   - [osu!lazer] : `28c846b4d9366484792e27f4729cd1afa2cdeb66` (2025-10-13)
 //!   - [osu!tools] : `ab97b64f60901952926b2121ddffb8976d7f8775` (2025-10-16)
 //!
