@@ -118,7 +118,7 @@ impl OsuPerformanceCalculator<'_> {
                     f64::max(0.0, 1.0 - diff_utils::pow(od / 13.33, 5)),
                 )
             } else {
-                (1.0, 1.0)
+                (0.75, 1.0)
             };
 
             // * As we're adding Oks and Mehs to an approximated number of combo breaks the result can be
