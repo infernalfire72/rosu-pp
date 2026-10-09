@@ -14,3 +14,4 @@ __pycache__/
 /tests/data/ext_acc_refs.rs
 /tests/data/ext_edge_refs.rs
 /tests/data/mass_osu_refs.rs
+/tests/data/*.osu
