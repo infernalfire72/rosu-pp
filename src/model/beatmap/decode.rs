@@ -607,8 +607,16 @@ impl DecodeBeatmap for Beatmap {
         };
 
         let pos = Pos {
-            x: x.parse_with_limits(MAX_COORDINATE_VALUE as f32)? as i32 as f32,
-            y: y.parse_with_limits(MAX_COORDINATE_VALUE as f32)? as i32 as f32,
+            x: f32::clamp(
+                x.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
+                0.0,
+                512.0,
+            ) as i32 as f32,
+            y: f32::clamp(
+                y.parse_with_limits(MAX_COORDINATE_VALUE as f32)?,
+                0.0,
+                512.0,
+            ) as i32 as f32,
         };
 
         let start_time = f64::parse(start_time)?;
