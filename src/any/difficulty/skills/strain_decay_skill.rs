@@ -15,7 +15,7 @@ pub trait StrainDecaySkill: StrainSkill {
 /// C# `StrainDecaySkill.StrainValueAt`.
 ///
 /// The skill's inherent `strain_value_at` should call this:
-/// ```
+/// ```text
 /// let sv = self.strain_value_of(curr, objects);
 /// strain_decay_skill_strain_value_at(
 ///     &mut self.skill_current_strain,
