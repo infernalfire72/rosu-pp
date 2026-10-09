@@ -9,5 +9,4 @@ sem_diff*
 __pycache__/
 .pi/
 
-# Generated C# reference snapshots; retain generators and beatmap inputs.
 /tests/data
