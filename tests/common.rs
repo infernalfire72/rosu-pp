@@ -4,6 +4,19 @@
 )]
 pub use self::{mods::*, paths::*};
 
+// Keep missing-reference gates visible in test listings and fail if explicitly run.
+#[macro_export]
+macro_rules! missing_reference_test {
+    ($cfg:ident, $name:ident, $reason:literal) => {
+        #[cfg(not($cfg))]
+        #[test]
+        #[ignore = $reason]
+        fn $name() {
+            panic!($reason);
+        }
+    };
+}
+
 /// Paths to .osu files
 mod paths {
     pub const OSU: &str = "./resources/2785319.osu";

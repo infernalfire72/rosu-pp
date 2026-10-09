@@ -8,3 +8,9 @@ expanded.rs
 sem_diff*
 __pycache__/
 .pi/
+
+# Generated C# reference snapshots; retain generators and beatmap inputs.
+/tests/data/ext_refs*.rs
+/tests/data/ext_acc_refs.rs
+/tests/data/ext_edge_refs.rs
+/tests/data/mass_osu_refs.rs

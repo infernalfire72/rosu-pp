@@ -28,6 +28,23 @@ C# now represents that absence with a nullable attribute; this does not change
 the numerical calculations. Zero-judgment performance keeps Rust's existing
 zero result, while the C# calculator currently produces NaN for empty maps.
 
+## Generated references
+
+All six generated Rust snapshots in `tests/data/` are local, ignored files.
+Git retains the generators, manifests, and beatmap inputs. A clean checkout
+builds and runs the ordinary tests without requiring C# tooling. The build
+script detects each available snapshot and enables its corresponding parity
+gates. Missing gates remain visible as ignored tests with generation
+instructions; a build warning lists missing snapshots. Explicitly running an
+ignored gate without its snapshot fails with those instructions.
+
+Generate snapshots with the commands below after building and verifying the
+reference CLI. The mass snapshot has its own generation command in the mass
+validation section. Cargo detects snapshot creation, changes, and removal
+automatically, including when running with `--all-features`. The full bit-exact
+suite requires all six local snapshots; a clean checkout alone does not verify
+C# parity.
+
 ## Reference coverage
 
 All numerical comparisons use `to_bits()` equality:
@@ -156,6 +173,8 @@ $env:OSU_SOURCE_DIR = (Resolve-Path ../osu-upstream).Path
 python scripts/gen_ext_refs.py osu scripts/manifest.txt tests/data/ext_refs.rs
 python scripts/gen_ext_acc_refs.py scripts/manifest.txt tests/data/ext_acc_refs.rs
 python scripts/gen_ext_edge_refs.py tests/data/ext_edge_refs.rs
+python scripts/gen_ext_refs.py mania scripts/manifest_mania.txt tests/data/ext_refs_mania.rs
+python scripts/gen_ext_refs.py catch scripts/manifest_catch.txt tests/data/ext_refs_catch.rs
 
 cargo nextest run --all-features
 cargo test --doc --all-features
