@@ -44,11 +44,89 @@ The existing Mania, Catch, Taiko, decoding, unit, and gradual tests remain part
 of the regression suite. Their algorithms and reference snapshots were not
 updated in this Standard pass.
 
-Validation on Windows: all 217 tests pass with `cargo nextest run --all-features`.
-All Standard gates also pass with `--release`. The full release suite has two
+Validation on Windows: all 219 tests pass with `cargo nextest run --all-features`.
+All 76 Standard and decoding tests selected with
+`--release -E 'test(osu) | binary(decode)'` also pass. All 15 executable
+documentation tests pass. The full release suite passes 217 of 219 tests,
+with two
 existing Mania failures on `resources/1002277.osu`: star rating differs by one
 bit increment, and difficulty pp differs by four. Both were reproduced from the
 unmodified `pp-update` base. The Mania reference values were kept unchanged.
+
+## Mass validation
+
+The read-only scan of `F:\backup3\AppData\osu\Songs` found 17,123 `.osu`
+files. Twenty zero-byte files cannot be decoded by C# and were excluded.
+The remaining 15,601 Standard files contain 15,407 distinct maps. The mass
+runner attempts every Standard file with these 16 mod combinations:
+
+NM, EZ, HR, DT, HT, HD, FL, HD+EZ, HD+FL, HD+DT, HR+DT, HD+HR+DT, EZ+DT,
+EZ+FL, HR+FL, DT+FL.
+
+Each combination is tested with lazer and classic scoring, both full-combo SS and
+an imperfect score with misses, 100s, 50s, reduced combo, and dropped slider
+ends/ticks. The score states come from the C# worker. Every numeric difficulty
+and performance attribute is compared as raw IEEE-754 bits. Nullable absent
+Flashlight difficulty is normalised to Rust's zero; other nullable fields are
+compared directly. Empty-map difficulty and Rust's zero pp are checked, but
+undefined C# empty-map pp is excluded.
+
+The completed comparisons cover **15,598 files**, **499,136 map/mod/scoring
+combinations**, and **22,449,152 numeric field checks**, with **zero numerical
+mismatches**. Seventeen valid maps have no judgments; their 1,088 performance
+cases check Rust's zero pp rather than undefined upstream pp.
+
+Three extreme maps remain **unverified** because C# could not complete the
+reference calculation within its loading limits:
+
+- Culprate - Yin (sometimes) [test3]
+- Camellia - M1LLI0N PP (sometimes) [1E23pp]
+- Frums (unknown "lambda") - 19ZZ (osu!team) [Aspire]
+
+Longer attempts with both Debug and Release C# builds consumed several
+GB of memory without producing references. These 96 combinations remain
+reported as reference failures; they are not counted as matching. The mass
+runner therefore returns a failure status on this full library until those
+references can be obtained. All numerical mismatches from completed
+comparisons have been fixed.
+
+Mass testing found and fixed:
+
+- Stack threshold multiplication at float precision and integral time comparisons.
+- Spinner position and stack offsets.
+- Clamping hitobject coordinates to the official bounds; preserving fractional
+  head and control-point coordinates in format version 128 and later.
+- Resetting repeats on zero-length slider paths during decoding.
+- Float subtraction in the snap aim overlap bonus.
+- Equal strain peak insertion order, matching `List<T>.BinarySearch`.
+- Fused interpolation rounding used by .NET 10 on FMA-capable hardware.
+- Flashlight power rounding, preventing LLVM from substituting a square root.
+
+Eleven maps in `tests/data/mass_osu/` retain these failures as permanent
+regressions. Their new snapshots cover 352 map/mod/scoring combinations and
+704 performance states. Existing seven-mod snapshots are unchanged. Shared
+decoding fixes also run through the other modes' existing regression gates.
+
+Run the mass comparison after building the pinned source-based CLI:
+
+```powershell
+python scripts/mass_osu.py "F:\backup3\AppData\osu\Songs" --tools ../osu-tools-upstream --classic
+```
+
+The runner builds persistent C# and Rust workers, writes resumable references
+and reports under `target/`, and exits unsuccessfully on any mismatch or
+calculator error. `--reference-timeout N` bounds each C# response to N seconds
+(default 120); a timeout is an explicit reference failure. `--limit N` selects a deterministic content-hash sample;
+`--debug` checks an unoptimised Rust build. `--classic` adds classic scoring to
+the default lazer cases. Comparisons use the current machine's .NET and Rust
+math implementations; the library run was performed on Windows.
+
+After confirming representative results against the official `simulate osu`
+CLI, regenerate only the new regression snapshot with:
+
+```powershell
+python scripts/gen_mass_osu_refs.py target/mass-osu/bin/Debug/net10.0/MassOsu.dll
+```
 
 ## Building the reference calculator
 
