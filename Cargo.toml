@@ -21,6 +21,7 @@ rosu-map = { version = "0.2.1" }
 rosu-mods = { version = "0.4.0" }
 
 [dev-dependencies]
+reference-tests = { path = "tests/support" }
 divan = { version = "0.1.21" }
 proptest = { version = "1.8.0" }
 rosu-mods = { version = "0.4.0", features = ["macros"] }

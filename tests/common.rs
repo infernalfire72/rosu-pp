@@ -8,7 +8,7 @@ pub use self::{mods::*, paths::*};
 #[macro_export]
 macro_rules! missing_reference_test {
     ($cfg:ident, $name:ident, $reason:literal) => {
-        #[cfg(not($cfg))]
+        #[reference_tests::missing($cfg)]
         #[test]
         #[ignore = $reason]
         fn $name() {
