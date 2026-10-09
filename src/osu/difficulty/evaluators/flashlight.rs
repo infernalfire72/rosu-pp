@@ -125,7 +125,8 @@ impl FlashlightEvaluator {
                     0.0,
                     pixel_travel_dist / osu_curr.travel_time - Self::MIN_VELOCITY,
                 ),
-                0.5,
+                // Keep Math.Pow rounding instead of LLVM's sqrt substitution.
+                std::hint::black_box(0.5),
             );
 
             // * Longer sliders require more memorisation.
