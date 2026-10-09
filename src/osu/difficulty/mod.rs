@@ -64,6 +64,10 @@ pub fn checked_difficulty(
 fn calculate_difficulty(difficulty: &Difficulty, map: &Beatmap) -> OsuDifficultyAttributes {
     debug_assert_eq!(map.mode, GameMode::Osu);
 
+    if map.hit_objects.is_empty() || difficulty.get_passed_objects() == 0 {
+        return OsuDifficultySetup::new(difficulty, map).attrs;
+    }
+
     let DifficultyValues {
         osu_objects,
         skills,
