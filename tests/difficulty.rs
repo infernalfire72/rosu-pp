@@ -14,6 +14,7 @@ mod common;
 
 include!("data/ext_refs.rs");
 include!("data/ext_edge_refs.rs");
+include!("data/mass_osu_refs.rs");
 include!("data/ext_refs_mania.rs");
 include!("data/ext_refs_catch.rs");
 
@@ -578,10 +579,37 @@ fn ext_catch() {
     }
 }
 
+#[test]
+fn mass_osu_regressions() {
+    for ext in MASS_OSU_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let attrs = Difficulty::new()
+            .mods(ext.mods)
+            .lazer(ext.lazer)
+            .calculate_for_mode::<Osu>(&map)
+            .unwrap();
+
+        for &(name, expected) in ext.difficulty {
+            assert_eq!(
+                attr_val(&attrs, name).to_bits(),
+                expected,
+                "{}/{name}, mods={}, lazer={}",
+                ext.path,
+                ext.mods,
+                ext.lazer
+            );
+        }
+    }
+}
+
 fn attr_val(attrs: &OsuDifficultyAttributes, fname: &str) -> f64 {
     match fname {
         "star_rating" => attrs.stars,
         "max_combo" => attrs.max_combo as f64,
+        "HitCircleCount" => f64::from(attrs.n_circles),
+        "SliderCount" => f64::from(attrs.n_sliders),
+        "SpinnerCount" => f64::from(attrs.n_spinners),
+        "n_large_ticks" => f64::from(attrs.n_large_ticks),
         "aim_difficulty" => attrs.aim,
         "aim_difficult_slider_count" => attrs.aim_difficult_slider_count,
         "speed_difficulty" => attrs.speed,

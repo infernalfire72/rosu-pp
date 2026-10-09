@@ -15,6 +15,7 @@ mod common;
 include!("data/ext_refs.rs");
 include!("data/ext_acc_refs.rs");
 include!("data/ext_edge_refs.rs");
+include!("data/mass_osu_refs.rs");
 include!("data/ext_refs_mania.rs");
 include!("data/ext_refs_catch.rs");
 
@@ -409,6 +410,47 @@ fn ext_catch() {
                     fname
                 ),
                 _ => panic!("{}/{}: rs={rv:?} cs={cv:?}", ext.path, fname),
+            }
+        }
+    }
+}
+
+#[test]
+fn mass_osu_regressions() {
+    for ext in MASS_OSU_REFS {
+        let map = Beatmap::from_path(ext.path).unwrap();
+        let difficulty = rosu_pp::Difficulty::new()
+            .mods(ext.mods)
+            .lazer(ext.lazer)
+            .calculate_for_mode::<rosu_pp::osu::Osu>(&map)
+            .unwrap();
+
+        for (index, score) in ext.scores.iter().enumerate() {
+            let s = score.state;
+            let attrs = difficulty
+                .clone()
+                .performance()
+                .mods(ext.mods)
+                .lazer(ext.lazer)
+                .n300(s[0])
+                .n100(s[1])
+                .n50(s[2])
+                .misses(s[3])
+                .combo(s[4])
+                .slider_end_hits(s[5])
+                .large_tick_hits(s[6])
+                .calculate()
+                .unwrap();
+
+            for &(name, expected) in score.performance {
+                assert_eq!(
+                    perf_opt_val(&attrs, name).map(f64::to_bits),
+                    expected,
+                    "{}/{name}, mods={}, lazer={}, score={index}",
+                    ext.path,
+                    ext.mods,
+                    ext.lazer
+                );
             }
         }
     }
