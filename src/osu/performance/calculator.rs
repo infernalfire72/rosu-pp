@@ -140,7 +140,8 @@ impl OsuPerformanceCalculator<'_> {
         );
         let acc_value = self.compute_accuracy_value();
 
-        let reading_value = self.compute_reading_value(effective_miss_count);
+        let reading_value =
+            self.compute_reading_value(effective_miss_count + aim_estimated_slider_breaks);
         let flashlight_value = self.compute_flashlight_value(effective_miss_count);
         let cognition_value = sum_cognition_difficulty(reading_value, flashlight_value);
 
