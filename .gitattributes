@@ -1,1 +1,5 @@
 * text=auto eol=lf
+
+# Preserve these generated snapshots exactly as stored in the base branch.
+tests/data/ext_acc_refs.rs -text whitespace=cr-at-eol
+tests/data/ext_refs.rs -text whitespace=cr-at-eol
