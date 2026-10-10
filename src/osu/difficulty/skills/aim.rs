@@ -138,7 +138,7 @@ impl Aim {
         }
 
         if self.mods.rx() {
-            combined_snap_difficulty *= 0.75;
+            // combined_snap_difficulty *= 0.75;
             flow_difficulty_new *= 0.6;
         }
 

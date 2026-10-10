@@ -97,7 +97,8 @@ impl ReadingEvaluator {
         );
 
         // Having less time to process information is harder
-        reading_difficulty *= Self::high_bpm_bonus(curr_obj.adjusted_delta_time);
+        let bonus = Self::high_bpm_bonus(curr_obj.adjusted_delta_time);
+        reading_difficulty *= bonus;
 
         reading_difficulty
     }

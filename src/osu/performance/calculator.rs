@@ -106,7 +106,7 @@ impl OsuPerformanceCalculator<'_> {
             multiplier *= 1.0 - (f64::from(self.attrs.n_spinners) / total_hits).powf(0.85);
         }
 
-        if self.mods.rx() {
+        /*if self.mods.rx() {
             let od = self.attrs.od();
 
             // * https://www.desmos.com/calculator/vspzsop6td
@@ -127,7 +127,7 @@ impl OsuPerformanceCalculator<'_> {
                 + f64::from(self.state.hitresults.n100) * n100_mult
                 + f64::from(self.state.hitresults.n50) * n50_mult)
                 .min(total_hits);
-        }
+        }*/
 
         let speed_deviation = self.calculate_speed_deviation();
 
@@ -295,9 +295,9 @@ impl OsuPerformanceCalculator<'_> {
     }
 
     fn compute_accuracy_value(&self) -> f64 {
-        if self.mods.rx() {
+        /*if self.mods.rx() {
             return 0.0;
-        }
+        }*/
 
         // * This percentage only considers HitCircles of any value - in this part
         // * of the calculation we focus on hitting the timing hit window.
@@ -349,6 +349,10 @@ impl OsuPerformanceCalculator<'_> {
         } else if self.mods.tc() {
             // * Decrease bonus for AR > 10
             acc_value *= 1.0 + 0.08 * diff_utils::reverse_lerp(self.attrs.ar, 11.5, 10.0);
+        }
+
+        if self.mods.rx() {
+            acc_value *= 0.8;
         }
 
         acc_value

@@ -81,9 +81,9 @@ impl Reading {
             difficulty *= 1.0 - magnetised_strength;
         }
 
-        if self.mods.rx() {
+        /*if self.mods.rx() {
             difficulty *= 0.4;
-        }
+        }*/
 
         if self.mods.ap() {
             difficulty *= 0.1;
