@@ -83,7 +83,7 @@ impl Aim {
         objects: &[OsuDifficultyObject<'a>],
     ) -> f64 {
         let snap_difficulty =
-            SnapAimEvaluator::evaluate_diff_of(curr, objects, self.include_sliders)
+            SnapAimEvaluator::evaluate_diff_of(curr, objects, self.include_sliders, self.mods.rx())
                 * Self::SKILL_MULTIPLIER_SNAP;
         let agility_difficulty =
             AgilityEvaluator::evaluate_diff_of(curr, objects) * Self::SKILL_MULTIPLIER_AGILITY;
@@ -124,10 +124,6 @@ impl Aim {
             [snap_difficulty_new, agility_difficulty],
         );
 
-        let p_snap =
-            Self::calculate_snap_flow_probability(flow_difficulty / combined_snap_difficulty);
-        let p_flow = 1.0 - p_snap;
-
         if self.mods.td() {
             // * we don't adjust agility here since agility represents TD difficulty in a decent enough way
             snap_difficulty_new = f64::powf(snap_difficulty_new, 0.89);
@@ -138,9 +134,13 @@ impl Aim {
         }
 
         if self.mods.rx() {
-            combined_snap_difficulty *= 0.75;
+            // combined_snap_difficulty *= 0.75;
             flow_difficulty_new *= 0.6;
         }
+
+        let snap_flow_ratio = flow_difficulty_new / combined_snap_difficulty;
+        let p_snap = Self::calculate_snap_flow_probability(snap_flow_ratio);
+        let p_flow = 1.0 - p_snap;
 
         let total_difficulty = combined_snap_difficulty * p_snap + flow_difficulty_new * p_flow;
 
