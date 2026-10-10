@@ -124,8 +124,6 @@ impl Aim {
             [snap_difficulty_new, agility_difficulty],
         );
 
-        let mut snap_flow_ratio = flow_difficulty / combined_snap_difficulty;
-
         if self.mods.td() {
             // * we don't adjust agility here since agility represents TD difficulty in a decent enough way
             snap_difficulty_new = f64::powf(snap_difficulty_new, 0.89);
@@ -138,9 +136,9 @@ impl Aim {
         if self.mods.rx() {
             // combined_snap_difficulty *= 0.75;
             flow_difficulty_new *= 0.6;
-            snap_flow_ratio = flow_difficulty_new / combined_snap_difficulty;
         }
 
+        let snap_flow_ratio = flow_difficulty_new / combined_snap_difficulty;
         let p_snap = Self::calculate_snap_flow_probability(snap_flow_ratio);
         let p_flow = 1.0 - p_snap;
 
