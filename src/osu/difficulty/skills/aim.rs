@@ -83,7 +83,7 @@ impl Aim {
         objects: &[OsuDifficultyObject<'a>],
     ) -> f64 {
         let snap_difficulty =
-            SnapAimEvaluator::evaluate_diff_of(curr, objects, self.include_sliders)
+            SnapAimEvaluator::evaluate_diff_of(curr, objects, self.include_sliders, self.mods.rx())
                 * Self::SKILL_MULTIPLIER_SNAP;
         let agility_difficulty =
             AgilityEvaluator::evaluate_diff_of(curr, objects) * Self::SKILL_MULTIPLIER_AGILITY;

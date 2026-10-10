@@ -24,6 +24,7 @@ impl SnapAimEvaluator {
         curr: &'a OsuDifficultyObject<'a>,
         diff_objects: &'a [OsuDifficultyObject<'a>],
         with_slider_travel_dist: bool,
+        relax: bool,
     ) -> f64 {
         let osu_curr_obj = curr;
 
@@ -72,11 +73,37 @@ impl SnapAimEvaluator {
 
         // * Penalize angle repetition.
         snap_difficulty *= Self::vector_angle_repetition(osu_curr_obj, osu_last_obj, diff_objects);
+        let repeated_base_difficulty = snap_difficulty;
 
         if let (Some(curr_angle), Some(last_angle)) = (osu_curr_obj.angle, osu_last_obj.angle) {
             // * Rewarding angles, take the smaller velocity as base.
             let velocity_influence = f64::min(curr_velocity, prev_velocity);
             let mut acute_angle_bonus = 0.0;
+            let high_bpm_gate = diff_utils::smootherstep(
+                diff_utils::milliseconds_to_bpm(osu_curr_obj.adjusted_delta_time, Some(2)),
+                300.0,
+                400.0,
+            );
+            let spaced_acute_gate = if relax {
+                diff_utils::smootherstep(
+                    f64::min(curr_dist, prev_dist),
+                    f64::from(DIAMETER * 2),
+                    f64::from(DIAMETER * 4),
+                ) * diff_utils::smootherstep(
+                    diff_utils::milliseconds_to_bpm(
+                        f64::max(
+                            osu_curr_obj.adjusted_delta_time,
+                            osu_last_obj.adjusted_delta_time,
+                        ),
+                        Some(2),
+                    ),
+                    270.0,
+                    300.0,
+                )
+            } else {
+                0.0
+            };
+            let acute_gate = f64::max(high_bpm_gate, spaced_acute_gate);
 
             // * If rhythms are the same.
             if f64::max(
@@ -100,13 +127,9 @@ impl SnapAimEvaluator {
                                 diff_utils::pow(Self::calc_angle_acuteness(last_angle), 3),
                             ));
 
-                // * Apply acute angle bonus for BPM above 300 1/2 and distance more than one diameter.
+                // Relax also rewards direction changes on widely spaced jumps.
                 acute_angle_bonus *= velocity_influence
-                    * diff_utils::smootherstep(
-                        diff_utils::milliseconds_to_bpm(osu_curr_obj.adjusted_delta_time, Some(2)),
-                        300.0,
-                        400.0,
-                    )
+                    * acute_gate
                     * diff_utils::smootherstep(curr_dist, 0.0, f64::from(DIAMETER * 2));
             }
 
@@ -158,6 +181,21 @@ impl SnapAimEvaluator {
                 if dist < 1.0 {
                     wide_angle_bonus *= 1.0 - 0.55 * f64::from(1.0 - dist);
                 }
+            }
+
+            if relax {
+                let original_acute_bonus = if acute_gate > 0.0 {
+                    acute_angle_bonus * high_bpm_gate / acute_gate
+                } else {
+                    0.0
+                };
+
+                // Limit new angle credit relative to the repeated base movement.
+                acute_angle_bonus = f64::min(
+                    acute_angle_bonus,
+                    original_acute_bonus
+                        + 0.35 * repeated_base_difficulty / Self::ACUTE_ANGLE_MULTIPLIER,
+                );
             }
 
             // * Add in acute angle bonus or wide angle bonus, whichever is larger.
